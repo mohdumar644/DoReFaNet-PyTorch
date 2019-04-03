@@ -12,10 +12,24 @@ def Binarize(tensor):
         E = tensor.abs().mean()        
         return tensor.sign() * E
 
- 
-k=2 # ACTIVATION BITS
+class Clamper(nn.Module):
+    def __init__(self,minval,maxval):
+        super(Clamper, self).__init__()
+        self.minval = minval
+        self.maxval = maxval
 
-class Quantizer(torch.autograd.Function):
+    def forward(self, x):
+        return x.clamp_(self.minval, self.maxval)
+
+class Quantizer(nn.Module):
+   def __init__(self, k):
+       super(Quantizer, self).__init__()
+       self.numbits = k
+
+   def forward(self, input):
+       return Quantize.apply(input, self.numbits)
+
+class Quantize(torch.autograd.Function):
     """
     We can implement our own custom autograd Functions by subclassing
     torch.autograd.Function and implementing the forward and backward passes
@@ -23,7 +37,7 @@ class Quantizer(torch.autograd.Function):
     """
 
     @staticmethod
-    def forward(ctx, input):
+    def forward(ctx, input, k):
         """
         In the forward pass we receive a Tensor containing the input and return
         a Tensor containing the output. ctx is a context object that can be used
@@ -45,7 +59,7 @@ class Quantizer(torch.autograd.Function):
         #input, = ctx.saved_tensors
         grad_input = grad_output.clone()
         #grad_input[input < 0] = 0
-        return grad_input
+        return grad_input, None
 
 
  
